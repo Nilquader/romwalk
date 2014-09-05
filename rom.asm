@@ -186,7 +186,7 @@ romloop:
   call kl_rom_select
   push bc ; save old rom number
   ld a, ($c000)
-  cp $01 ; is rom as standard background rom?
+  cp $01 ; is rom a standard background rom?
   jr nz, romloopend
   ld hl, ($c004)
 
@@ -292,6 +292,7 @@ printromlistloop9:
 
 ; choose a rom
   ld b, 0 ; count number of esc presses
+  ld c, 0 ; number selected by cursor
 chooserom:
  ; ld a, b
  ; or a
@@ -300,6 +301,18 @@ chooserom:
   call km_wait_char
   cp $ef
   jr z, chooserom 
+  cp $f0 ; cursor up
+  call z, choose_crup - start + $4000 
+  cp $0b ; joy up
+  call z, choose_crup - start + $4000 
+  cp $f1 ; cursor down
+  call z, choose_crdn - start + $4000 
+  cp $0a ; joy down
+  call z, choose_crdn - start + $4000 
+  cp $0d ; enter
+  call z, choose_enter - start + $4000
+  cp $58
+  call z, choose_enter - start + $4000
   cp 252
   jr nz, chooserom2
   inc b
@@ -333,15 +346,106 @@ chooseromnomul:
 scf
 ret 
 
-  ld (callromnum - start + $4000), a
-  rst $18
-  .dw calladdr - start + $4000
+ ; ld (callromnum - start + $4000), a
+ ; rst $18
+ ; .dw calladdr - start + $4000
+ ; ret
+
+choose_crup:
+  push af
+  ld a, c
+  or a
+  jr z, choose_crup_nothing ; don't do anything if cursor is at 0
+  call cr_clear - start + $4000 
+  dec c
+  jr nz, choose_crup_notz
+  inc c ; don't decrement if already at 1
+choose_crup_notz:
+  call cr_paint - start + $4000
+choose_crup_nothing:
+  pop af
   ret
 
-calladdr:
-  .dw $c009 ; execution address
-callromnum:
-  .db $02 ; rom config = 2
+choose_crdn:
+  push af
+  call cr_clear - start + $4000 
+  inc c
+  ld a, c
+  ld hl, listnum
+  dec a
+  cp (hl)
+  jr nz, choose_crdn_notz
+  dec c
+choose_crdn_notz:
+  call cr_paint - start + $4000 
+  pop af
+  ret
+
+choose_enter:
+  push af
+  ld a, c
+  or a
+  jr z, choose_crup_nothing ; don't do anything if cursor is at 0
+  pop af 
+  pop hl ; correct stack
+  ld a, c ; which rom slot?
+  dec a
+  jp chooserommul - start + $4000
+  
+
+cr_clear:
+  xor a
+  or c
+  ret z ; dont clear if cursor is at 0
+  cp 12
+  jp m, cr_clear_1strow - start + $4000
+  ; must be 2nd row:
+  ld h, 24
+  ld a, c
+  add a, -11
+  ld l, a
+  inc l
+  rlc l
+  jr cr_clear_do
+cr_clear_1strow:
+  ld h, 4
+  ld l, c
+  inc l
+  rlc l
+cr_clear_do:
+  call txt_set_cursor
+  ld a, ' '
+  call txt_output
+  ret
+
+cr_paint:
+  xor a 
+  or c
+  cp 12
+  jp m, cr_paint_1strow - start + $4000
+  ; must be 2nd row:
+  ld h, 24
+  ld a, c
+  add a, -11
+  ld l, a
+  inc l
+  rlc l
+  jr cr_paint_do
+cr_paint_1strow:
+  ld h, 4
+  ld l, c
+  inc l
+  rlc l
+cr_paint_do:
+  call txt_set_cursor
+  ld a, '>'
+  call txt_output
+  ret
+
+;calladdr:
+;  .dw $c009 ; execution address
+;callromnum:
+;  .db $02 ; rom config = 2
 print:
   ld a,(hl)
   or a

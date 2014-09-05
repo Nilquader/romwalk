@@ -16,6 +16,7 @@ clean:
 	rm -rf $(EXECNAME).o
 	rm -rf $(EXECNAME).sym
 	rm -rf rom.lst
+	rm -rf *~
 
 $(EXECNAME).o: rom.asm
 	$(ASM) rom.asm $(EXECNAME).o
