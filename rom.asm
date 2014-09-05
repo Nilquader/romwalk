@@ -1,5 +1,5 @@
 .define version	$01
-.define revision $02
+.define revision $03
 .define romlist $8000
 .define romnum $7ffe
 .define listnum $7ffc
